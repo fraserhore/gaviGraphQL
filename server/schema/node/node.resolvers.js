@@ -16,7 +16,6 @@ const nodeResolvers = {
   },
 
   async version (node, args) {
-    console.log(args);
     return await getVersion(node.uuid, args.versionName, args.versionValidityDate, args.lang)
   }
 

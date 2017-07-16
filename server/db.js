@@ -69,8 +69,10 @@ export async function getVersion (id, versionName, versionValidityDate, lang) {
       versionMatch += " AND version.to = 9007199254740991";
   }
   const query = 'MATCH (node)-[version:VERSION {lang:{lang}}]->(versionNode) WHERE node.uuid = {id} ' + versionMatch + ' RETURN versionNode';
+
   try {
     const result = await session.run(query, options);
+    console.log(result);
     const record = result.records[0];
     session.close();
     return record.get('versionNode').properties;
@@ -166,53 +168,53 @@ export async function createNode ({input}) {
   const query =  // Match path from root to parent so we can use it later to create the URL alias.
      ' MATCH p = (a:Root)-[:CONTAINS*]->(parent)'
     // Match on parent uuid and author uuid
-              +' WHERE parent.uuid = {parentId}'
-              // Create new identity and version
-              +' CREATE (parent)-[:CONTAINS {from:timestamp(), to:9007199254740991, versionNumber:1, versionName:{versionName}}]->'
-              +       '(childidentity:Identity:ContentObject {contentType:{contentType}})'
-              +       '-[:VERSION {from:timestamp(), to:9007199254740991, versionNumber:1, versionName:{versionName}, lang:{lang}}]->'
-              +       '(childversion:Version)'
-              // Create URL alias identity and version
-              +' CREATE (childidentity)-[:URL_ALIAS {from:timestamp(), to:9007199254740991, versionNumber:1, versionName:{versionName}}]->'
-              +       '(urlAliasIdentity:Identity:UrlAlias {contentType:"urlAlias"})'
-              +       '-[:VERSION {from:timestamp(), to:9007199254740991, versionNumber:1, versionName:{versionName}, lang:{lang}}]->'
-              +       '(urlAliasVersion:Version)'
-              // Set properties
-              +' SET childidentity:' + options.contentType
-              +' SET childversion = {properties}'
-              +' SET childidentity.name = ' + options.identityNamePattern
+    +' WHERE parent.uuid = {parentId}'
+    // Create new identity and version
+    +' CREATE (parent)-[:CONTAINS {from:timestamp(), to:9007199254740991, versionNumber:1, versionName:{versionName}}]->'
+    +       '(childidentity:Identity:ContentObject {contentType:{contentType}})'
+    +       '-[:VERSION {from:timestamp(), to:9007199254740991, versionNumber:1, versionName:{versionName}, lang:{lang}}]->'
+    +       '(childversion:Version)'
+    // Create URL alias identity and version
+    +' CREATE (childidentity)-[:URL_ALIAS {from:timestamp(), to:9007199254740991, versionNumber:1, versionName:{versionName}}]->'
+    +       '(urlAliasIdentity:Identity:UrlAlias {contentType:"urlAlias"})'
+    +       '-[:VERSION {from:timestamp(), to:9007199254740991, versionNumber:1, versionName:{versionName}, lang:{lang}}]->'
+    +       '(urlAliasVersion:Version)'
+    // Set properties
+    +' SET childidentity:' + options.contentType
+    +' SET childversion = {properties}'
+    +' SET childidentity.name = ' + options.identityNamePattern
 
-              +' WITH parent, childidentity, childversion, urlAliasIdentity, urlAliasVersion, reduce(urlAlias = "", n IN nodes(p)| urlAlias + "/" + replace(n.name," ", "-") + "/" + replace(childversion.name," ", "-")) AS urlAlias'
-              +' MATCH (author)'
-              +' WHERE author.uuid = {authorId}'
-              // Create relationshps from author to identity nodes and version nodes
-              +' CREATE (author)-[:CREATED {timestamp:timestamp()}]->(childidentity)'
-              +' CREATE (author)-[:CREATED {timestamp:timestamp()}]->(childversion)'
-              +' CREATE (author)-[:CREATED {timestamp:timestamp()}]->(urlAliasIdentity)'
-              +' CREATE (author)-[:CREATED {timestamp:timestamp()}]->(urlAliasVersion)'
-              // Set URL Alias
-              +' SET urlAliasIdentity.name = urlAlias'
-              +' SET urlAliasVersion.urlAlias = urlAlias'
-              // Set uuids
-              +' WITH parent, childidentity, childversion, urlAliasIdentity, urlAliasVersion, author'
-              +' CALL apoc.create.uuids(4) YIELD uuid'
-              +' WITH parent, childidentity, childversion, urlAliasIdentity, urlAliasVersion, author, collect(uuid) as uuids'
-              +' SET childidentity.uuid = uuids[0]'
-              +' SET childversion.uuid = uuids[1]'
-              +' SET urlAliasIdentity.uuid = uuids[2]'
-              +' SET urlAliasVersion.uuid = uuids[3]'
+    +' WITH parent, childidentity, childversion, urlAliasIdentity, urlAliasVersion, reduce(urlAlias = "", n IN nodes(p)| urlAlias + "/" + replace(n.name," ", "-") + "/" + replace(childversion.name," ", "-")) AS urlAlias'
+    +' MATCH (author)'
+    +' WHERE author.uuid = {authorId}'
+    // Create relationshps from author to identity nodes and version nodes
+    +' CREATE (author)-[:CREATED {timestamp:timestamp()}]->(childidentity)'
+    +' CREATE (author)-[:CREATED {timestamp:timestamp()}]->(childversion)'
+    +' CREATE (author)-[:CREATED {timestamp:timestamp()}]->(urlAliasIdentity)'
+    +' CREATE (author)-[:CREATED {timestamp:timestamp()}]->(urlAliasVersion)'
+    // Set URL Alias
+    +' SET urlAliasIdentity.name = urlAlias'
+    +' SET urlAliasVersion.urlAlias = urlAlias'
+    // Set uuids
+    +' WITH parent, childidentity, childversion, urlAliasIdentity, urlAliasVersion, author'
+    +' CALL apoc.create.uuids(4) YIELD uuid'
+    +' WITH parent, childidentity, childversion, urlAliasIdentity, urlAliasVersion, author, collect(uuid) as uuids'
+    +' SET childidentity.uuid = uuids[0]'
+    +' SET childversion.uuid = uuids[1]'
+    +' SET urlAliasIdentity.uuid = uuids[2]'
+    +' SET urlAliasVersion.uuid = uuids[3]'
 
-              // Create relationships if there are any
-              +  relationshipsStatement
+    // Create relationships if there are any
+    +  relationshipsStatement
 
-              // Create relationship to content type
-              +' WITH parent, childidentity, childversion, urlAliasIdentity, urlAliasVersion, author'
-              +' MATCH (contentType:ContentType)-[:VERSION {to:9007199254740991}]->(contentTypeVersion)'
-              +' WHERE contentTypeVersion.identifier = {contentType}'
-              +' CREATE (childidentity)-[:INSTANCE_OF]->(contentType)'
+    // Create relationship to content type
+    +' WITH parent, childidentity, childversion, urlAliasIdentity, urlAliasVersion, author'
+    +' MATCH (contentType:ContentType)-[:VERSION {to:9007199254740991}]->(contentTypeVersion)'
+    +' WHERE contentTypeVersion.identifier = {contentType}'
+    +' CREATE (childidentity)-[:INSTANCE_OF]->(contentType)'
 
-              // Return results
-              +' RETURN parent, childidentity, childversion, urlAliasIdentity, urlAliasVersion, author';
+    // Return results
+    +' RETURN parent, childidentity, childversion, urlAliasIdentity, urlAliasVersion, author';
   console.log(query);
 
   try {
@@ -227,7 +229,8 @@ export async function createNode ({input}) {
               'urlAliasVersion': record.get('urlAliasVersion')
           };
     session.close();
-    return payload;
+    console.log(record.get('childidentity').properties);
+    return record.get('childidentity').properties;
   } catch (error) {
       session.close();
       console.log(error);
@@ -238,6 +241,7 @@ export async function createNode ({input}) {
 
 export function updateNode (id, input) {
 
+  console.log(id);
 
 }
 
